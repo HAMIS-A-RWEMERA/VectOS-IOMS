@@ -11,7 +11,7 @@ import {
   payments,
   inventoryMovements,
 } from "./schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface ShopRecord {
   id: number;
@@ -22,8 +22,10 @@ export interface ShopRecord {
   email: string | null;
   location: string | null;
   tin_number: string | null;
-  status: string | null;
+  status: string | null; // 'active' | 'pending_approval' | 'rejected' | 'suspended'
   subscription_plan: string | null;
+  receipt_footer?: string | null;
+  approval_notes?: string | null;
   created_at?: Date | string | null;
 }
 
@@ -45,18 +47,40 @@ export interface UserRecord {
   name: string;
   email: string;
   password: string;
-  role: "superadmin" | "manager" | "cashier" | "stock_keeper" | "accountant";
+  role:
+    | "superadmin"
+    | "superadmin_support"
+    | "manager"
+    | "accountant"
+    | "storekeeper"
+    | "salesperson"
+    | "cashier"
+    | "employee";
   job_title: string | null;
   phone: string | null;
   is_active: number | null;
+
+  // The 16 Core Capabilities
   can_create_orders: number | null;
   can_process_payments: number | null;
   can_release_stock: number | null;
   can_manage_stock: number | null;
+  can_import_export_stock: number | null;
+  can_partner_borrow: number | null;
   can_view_reports: number | null;
+  can_view_buying_prices: number | null;
   can_give_discounts: number | null;
   can_manage_users: number | null;
+  can_print_full_receipt: number | null;
+  can_print_delivery_note: number | null;
+  can_manage_customers: number | null;
+  can_manage_partners: number | null;
   can_void_orders: number | null;
+  can_edit_company_settings: number | null;
+
+  // Supplementary Safeguards
+  can_view_audit_trail: number | null;
+  can_reset_passwords: number | null;
 }
 
 export interface ProductRecord {
@@ -157,6 +181,7 @@ class MemoryStore {
       tin_number: "100234567",
       status: "active",
       subscription_plan: "enterprise",
+      receipt_footer: "Thank you for building with Vectos! Quality Certified Hardware.",
       created_at: new Date("2026-01-15T08:00:00Z"),
     },
     {
@@ -170,6 +195,7 @@ class MemoryStore {
       tin_number: "100987654",
       status: "active",
       subscription_plan: "professional",
+      receipt_footer: "Certified Electrical Cables & Commercial Fittings",
       created_at: new Date("2026-02-01T09:30:00Z"),
     },
     {
@@ -183,7 +209,22 @@ class MemoryStore {
       tin_number: "100456123",
       status: "active",
       subscription_plan: "starter",
+      receipt_footer: "Musanze Heavy Hardware & Steel Distributor",
       created_at: new Date("2026-02-20T10:00:00Z"),
+    },
+    {
+      id: 4,
+      name: "Kigali North Heavy Metals & Glass Depot",
+      code: "KGL-NORTH-04",
+      owner_name: "Thierry Habineza",
+      phone: "+250 788 999 111",
+      email: "thierry@kigalinorthdepot.rw",
+      location: "Gisozi Timber & Hardware Market",
+      tin_number: "100876543",
+      status: "pending_approval", // PENDING APPROVAL QUEUE SAMPLE
+      subscription_plan: "professional",
+      receipt_footer: "Awaiting SuperAdmin Activation",
+      created_at: new Date("2026-10-23T20:15:00Z"),
     },
   ];
 
@@ -231,6 +272,7 @@ class MemoryStore {
   ];
 
   users: UserRecord[] = [
+    // 1. SuperAdmin (Platform Owner)
     {
       id: 1,
       shop_id: 1,
@@ -239,18 +281,29 @@ class MemoryStore {
       email: "rwemera30@gmail.com",
       password: defaultHash,
       role: "superadmin",
-      job_title: "Platform Owner & Managing Director",
+      job_title: "Managing Director & Platform Owner",
       phone: "+250 788 123 456",
       is_active: 1,
       can_create_orders: 1,
       can_process_payments: 1,
       can_release_stock: 1,
       can_manage_stock: 1,
+      can_import_export_stock: 1,
+      can_partner_borrow: 1,
       can_view_reports: 1,
+      can_view_buying_prices: 1,
       can_give_discounts: 1,
       can_manage_users: 1,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 1,
+      can_manage_customers: 1,
+      can_manage_partners: 1,
       can_void_orders: 1,
+      can_edit_company_settings: 1,
+      can_view_audit_trail: 1,
+      can_reset_passwords: 1,
     },
+    // 2. Manager (Store Owner / Operations Manager)
     {
       id: 2,
       shop_id: 1,
@@ -266,13 +319,117 @@ class MemoryStore {
       can_process_payments: 1,
       can_release_stock: 1,
       can_manage_stock: 1,
+      can_import_export_stock: 1,
+      can_partner_borrow: 1,
       can_view_reports: 1,
+      can_view_buying_prices: 1,
       can_give_discounts: 1,
       can_manage_users: 1,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 1,
+      can_manage_customers: 1,
+      can_manage_partners: 1,
       can_void_orders: 1,
+      can_edit_company_settings: 1,
+      can_view_audit_trail: 1,
+      can_reset_passwords: 1,
     },
+    // 3. Accountant (Finance & Accounts Lead)
     {
       id: 3,
+      shop_id: 1,
+      stock_id: 1,
+      name: "Claudine Mutoni",
+      email: "accountant@vectos.rw",
+      password: defaultHash,
+      role: "accountant",
+      job_title: "Finance & Accounts Lead (EBM)",
+      phone: "+250 788 555 666",
+      is_active: 1,
+      can_create_orders: 0,
+      can_process_payments: 1,
+      can_release_stock: 0,
+      can_manage_stock: 0,
+      can_import_export_stock: 1,
+      can_partner_borrow: 0,
+      can_view_reports: 1,
+      can_view_buying_prices: 1,
+      can_give_discounts: 0,
+      can_manage_users: 0,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 0,
+      can_manage_customers: 1,
+      can_manage_partners: 1,
+      can_void_orders: 0,
+      can_edit_company_settings: 0,
+      can_view_audit_trail: 1,
+      can_reset_passwords: 0,
+    },
+    // 4. Storekeeper (Warehouse & Inventory Logistics)
+    {
+      id: 4,
+      shop_id: 1,
+      stock_id: 1,
+      name: "Bosco Gasana",
+      email: "stock@vectos.rw",
+      password: defaultHash,
+      role: "storekeeper",
+      job_title: "Depot Inventory Lead",
+      phone: "+250 788 444 555",
+      is_active: 1,
+      can_create_orders: 0,
+      can_process_payments: 0,
+      can_release_stock: 1,
+      can_manage_stock: 1,
+      can_import_export_stock: 1,
+      can_partner_borrow: 1,
+      can_view_reports: 0,
+      can_view_buying_prices: 0,
+      can_give_discounts: 0,
+      can_manage_users: 0,
+      can_print_full_receipt: 0,
+      can_print_delivery_note: 1,
+      can_manage_customers: 0,
+      can_manage_partners: 1,
+      can_void_orders: 0,
+      can_edit_company_settings: 0,
+      can_view_audit_trail: 1,
+      can_reset_passwords: 0,
+    },
+    // 5. Salesperson (Counter Sales & Client Orders)
+    {
+      id: 5,
+      shop_id: 1,
+      stock_id: 2,
+      name: "Jean Paul Nkurunziza",
+      email: "sales@vectos.rw",
+      password: defaultHash,
+      role: "salesperson",
+      job_title: "Senior Technical Sales Executive",
+      phone: "+250 788 777 999",
+      is_active: 1,
+      can_create_orders: 1,
+      can_process_payments: 0,
+      can_release_stock: 0,
+      can_manage_stock: 0,
+      can_import_export_stock: 0,
+      can_partner_borrow: 1,
+      can_view_reports: 0,
+      can_view_buying_prices: 0,
+      can_give_discounts: 1,
+      can_manage_users: 0,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 1,
+      can_manage_customers: 1,
+      can_manage_partners: 0,
+      can_void_orders: 0,
+      can_edit_company_settings: 0,
+      can_view_audit_trail: 0,
+      can_reset_passwords: 0,
+    },
+    // 6. Cashier (POS Billing & Payment Collection)
+    {
+      id: 6,
       shop_id: 1,
       stock_id: 2,
       name: "Diane Mukamana",
@@ -286,50 +443,113 @@ class MemoryStore {
       can_process_payments: 1,
       can_release_stock: 0,
       can_manage_stock: 0,
-      can_view_reports: 1,
+      can_import_export_stock: 0,
+      can_partner_borrow: 0,
+      can_view_reports: 0,
+      can_view_buying_prices: 0,
       can_give_discounts: 0,
       can_manage_users: 0,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 0,
+      can_manage_customers: 0,
+      can_manage_partners: 0,
       can_void_orders: 0,
+      can_edit_company_settings: 0,
+      can_view_audit_trail: 0,
+      can_reset_passwords: 0,
     },
+    // 7. Employee (General Operations / PR & Customer Relations)
     {
-      id: 4,
+      id: 7,
       shop_id: 1,
       stock_id: 1,
-      name: "Bosco Gasana",
-      email: "stock@vectos.rw",
+      name: "Sonia Uwitonze",
+      email: "employee@vectos.rw",
       password: defaultHash,
-      role: "stock_keeper",
-      job_title: "Warehouse Inventory Controller",
-      phone: "+250 788 444 555",
+      role: "employee",
+      job_title: "PR & Customer Relations Officer",
+      phone: "+250 788 666 888",
       is_active: 1,
       can_create_orders: 0,
       can_process_payments: 0,
-      can_release_stock: 1,
-      can_manage_stock: 1,
-      can_view_reports: 1,
-      can_give_discounts: 0,
-      can_manage_users: 0,
-      can_void_orders: 0,
-    },
-    {
-      id: 5,
-      shop_id: 1,
-      stock_id: 1,
-      name: "Claudine Mutoni",
-      email: "accountant@vectos.rw",
-      password: defaultHash,
-      role: "accountant",
-      job_title: "Senior Financial Accountant",
-      phone: "+250 788 555 666",
-      is_active: 1,
-      can_create_orders: 0,
-      can_process_payments: 1,
       can_release_stock: 0,
       can_manage_stock: 0,
-      can_view_reports: 1,
+      can_import_export_stock: 0,
+      can_partner_borrow: 0,
+      can_view_reports: 0,
+      can_view_buying_prices: 0,
       can_give_discounts: 0,
       can_manage_users: 0,
+      can_print_full_receipt: 0,
+      can_print_delivery_note: 1,
+      can_manage_customers: 1,
+      can_manage_partners: 0,
       can_void_orders: 0,
+      can_edit_company_settings: 0,
+      can_view_audit_trail: 0,
+      can_reset_passwords: 0,
+    },
+    // 8. SuperAdmin Support Staff (Platform Customer Support Lead)
+    {
+      id: 8,
+      shop_id: 1,
+      stock_id: 1,
+      name: "Kevin Kalisa (Support Specialist)",
+      email: "support@vectos.rw",
+      password: defaultHash,
+      role: "superadmin_support",
+      job_title: "Platform Client Success & Support Lead",
+      phone: "+250 788 111 222",
+      is_active: 1,
+      can_create_orders: 0,
+      can_process_payments: 0,
+      can_release_stock: 0,
+      can_manage_stock: 0,
+      can_import_export_stock: 1,
+      can_partner_borrow: 0,
+      can_view_reports: 1,
+      can_view_buying_prices: 0,
+      can_give_discounts: 0,
+      can_manage_users: 0,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 1,
+      can_manage_customers: 1,
+      can_manage_partners: 1,
+      can_void_orders: 0,
+      can_edit_company_settings: 0,
+      can_view_audit_trail: 1,
+      can_reset_passwords: 1,
+    },
+    // Pending store applicant user:
+    {
+      id: 9,
+      shop_id: 4,
+      stock_id: 1,
+      name: "Thierry Habineza",
+      email: "thierry@kigalinorthdepot.rw",
+      password: defaultHash,
+      role: "manager",
+      job_title: "Depot Proprietor",
+      phone: "+250 788 999 111",
+      is_active: 0, // Inactive until SuperAdmin approves shop
+      can_create_orders: 1,
+      can_process_payments: 1,
+      can_release_stock: 1,
+      can_manage_stock: 1,
+      can_import_export_stock: 1,
+      can_partner_borrow: 1,
+      can_view_reports: 1,
+      can_view_buying_prices: 1,
+      can_give_discounts: 1,
+      can_manage_users: 1,
+      can_print_full_receipt: 1,
+      can_print_delivery_note: 1,
+      can_manage_customers: 1,
+      can_manage_partners: 1,
+      can_void_orders: 1,
+      can_edit_company_settings: 1,
+      can_view_audit_trail: 1,
+      can_reset_passwords: 1,
     },
   ];
 
@@ -405,7 +625,7 @@ class MemoryStore {
       unit: "pcs",
       buying_price: 26000,
       selling_price: 30500,
-      quantity: 12, // LOW STOCK TRIGGER
+      quantity: 12,
       low_stock_threshold: 20,
       description: "Heavy structural foundation rebar steel",
     },
@@ -453,66 +673,6 @@ class MemoryStore {
       quantity: 64,
       low_stock_threshold: 12,
       description: "Commercial weatherproof outdoor illumination",
-    },
-    {
-      id: 9,
-      shop_id: 1,
-      stock_id: 1,
-      name: "Single Core Copper Wire 2.5mm (100m Roll)",
-      sku: "ELEC-WR25-100",
-      barcode: "600123456009",
-      category: "Electrical",
-      unit: "rolls",
-      buying_price: 42000,
-      selling_price: 51000,
-      quantity: 6, // LOW STOCK TRIGGER
-      low_stock_threshold: 15,
-      description: "Pure copper electrical installation cable",
-    },
-    {
-      id: 10,
-      shop_id: 1,
-      stock_id: 1,
-      name: "Solid Brass Lever Door Handle Set",
-      sku: "HRD-DH-BRS",
-      barcode: "600123456010",
-      category: "Hardware & Tools",
-      unit: "sets",
-      buying_price: 14000,
-      selling_price: 18500,
-      quantity: 55,
-      low_stock_threshold: 10,
-      description: "Interior door mortise lock set with satin brass finish",
-    },
-    {
-      id: 11,
-      shop_id: 1,
-      stock_id: 1,
-      name: "Total Tools Angle Grinder 900W 115mm",
-      sku: "TLS-AG-900W",
-      barcode: "600123456011",
-      category: "Hardware & Tools",
-      unit: "pcs",
-      buying_price: 38000,
-      selling_price: 47000,
-      quantity: 24,
-      low_stock_threshold: 5,
-      description: "Industrial power cutter and grinding tool",
-    },
-    {
-      id: 12,
-      shop_id: 1,
-      stock_id: 1,
-      name: "Gypsum Board 9.5mm x 1.2m x 2.4m",
-      sku: "GYP-95-1224",
-      barcode: "600123456012",
-      category: "Finishing & Boards",
-      unit: "sheets",
-      buying_price: 9500,
-      selling_price: 12000,
-      quantity: 150,
-      low_stock_threshold: 20,
-      description: "Fire-resistant drywall partition plasterboard",
     },
   ];
 
@@ -580,36 +740,6 @@ class MemoryStore {
       notes: "Delivered to Kagarama Site 4",
       created_at: new Date("2026-10-23T08:30:00Z"),
     },
-    {
-      id: 2,
-      shop_id: 1,
-      stock_id: 1,
-      order_number: "ORD-20261023-002",
-      customer_id: 5,
-      salesperson_id: 3,
-      total_amount: 275000,
-      paid_amount: 275000,
-      debt_amount: 0,
-      payment_status: "paid",
-      fulfillment_status: "completed",
-      notes: "Cash counter sale",
-      created_at: new Date("2026-10-23T11:15:00Z"),
-    },
-    {
-      id: 3,
-      shop_id: 1,
-      stock_id: 1,
-      order_number: "ORD-20261023-003",
-      customer_id: 2,
-      salesperson_id: 1,
-      total_amount: 319000,
-      paid_amount: 134000,
-      debt_amount: 185000,
-      payment_status: "partial",
-      fulfillment_status: "completed",
-      notes: "Plumbing pipes and grinders for Kimihurura site",
-      created_at: new Date("2026-10-23T14:45:00Z"),
-    },
   ];
 
   orderItems: OrderItemRecord[] = [
@@ -622,56 +752,6 @@ class MemoryStore {
       selling_price: 12500,
       subtotal: 1250000,
       profit: 200000,
-    },
-    {
-      id: 2,
-      order_id: 1,
-      product_id: 4,
-      quantity: 20,
-      buying_price: 14500,
-      selling_price: 17200,
-      subtotal: 344000,
-      profit: 54000,
-    },
-    {
-      id: 3,
-      order_id: 2,
-      product_id: 7,
-      quantity: 2,
-      buying_price: 68000,
-      selling_price: 79500,
-      subtotal: 159000,
-      profit: 23000,
-    },
-    {
-      id: 4,
-      order_id: 2,
-      product_id: 8,
-      quantity: 4,
-      buying_price: 22000,
-      selling_price: 29000,
-      subtotal: 116000,
-      profit: 28000,
-    },
-    {
-      id: 5,
-      order_id: 3,
-      product_id: 6,
-      quantity: 10,
-      buying_price: 18000,
-      selling_price: 22500,
-      subtotal: 225000,
-      profit: 45000,
-    },
-    {
-      id: 6,
-      order_id: 3,
-      product_id: 11,
-      quantity: 2,
-      buying_price: 38000,
-      selling_price: 47000,
-      subtotal: 94000,
-      profit: 18000,
     },
   ];
 
@@ -686,26 +766,6 @@ class MemoryStore {
       recorded_by: 1,
       created_at: new Date("2026-10-23T08:35:00Z"),
     },
-    {
-      id: 2,
-      shop_id: 1,
-      order_id: 2,
-      amount: 275000,
-      payment_method: "cash",
-      reference_no: "CASH-REC-002",
-      recorded_by: 3,
-      created_at: new Date("2026-10-23T11:15:00Z"),
-    },
-    {
-      id: 3,
-      shop_id: 1,
-      order_id: 3,
-      amount: 134000,
-      payment_method: "bank_transfer",
-      reference_no: "BK-TXN-4910283",
-      recorded_by: 1,
-      created_at: new Date("2026-10-23T14:48:00Z"),
-    },
   ];
 
   inventoryMovements: InventoryMovementRecord[] = [
@@ -717,42 +777,6 @@ class MemoryStore {
       movement_type: "Stock Received",
       performed_by: 1,
       created_at: new Date("2026-10-20T09:00:00Z"),
-    },
-    {
-      id: 2,
-      shop_id: 1,
-      product_id: 1,
-      quantity: -100,
-      movement_type: "Sale",
-      performed_by: 1,
-      created_at: new Date("2026-10-23T08:30:00Z"),
-    },
-    {
-      id: 3,
-      shop_id: 1,
-      product_id: 4,
-      quantity: -20,
-      movement_type: "Sale",
-      performed_by: 1,
-      created_at: new Date("2026-10-23T08:30:00Z"),
-    },
-    {
-      id: 4,
-      shop_id: 1,
-      product_id: 7,
-      quantity: -2,
-      movement_type: "Sale",
-      performed_by: 3,
-      created_at: new Date("2026-10-23T11:15:00Z"),
-    },
-    {
-      id: 5,
-      shop_id: 1,
-      product_id: 5,
-      quantity: -2,
-      movement_type: "Damage",
-      performed_by: 4,
-      created_at: new Date("2026-10-22T16:00:00Z"),
     },
   ];
 }
@@ -774,6 +798,18 @@ export const dataStore = {
     return memoryStore.shops;
   },
 
+  async getPendingShops(): Promise<ShopRecord[]> {
+    if (isConnectedToNeon && db) {
+      try {
+        const result = await db.select().from(shops).where(eq(shops.status, "pending_approval"));
+        return result as ShopRecord[];
+      } catch (e) {
+        console.error("Neon DB error in getPendingShops:", e);
+      }
+    }
+    return memoryStore.shops.filter((s) => s.status === "pending_approval");
+  },
+
   async getShopById(id: number): Promise<ShopRecord | null> {
     if (isConnectedToNeon && db) {
       try {
@@ -787,6 +823,8 @@ export const dataStore = {
   },
 
   async createShop(data: Partial<ShopRecord>): Promise<ShopRecord> {
+    const status = data.status || "pending_approval";
+
     if (isConnectedToNeon && db) {
       try {
         const [result] = await db
@@ -799,12 +837,14 @@ export const dataStore = {
             email: data.email || null,
             location: data.location || null,
             tin_number: data.tin_number || null,
-            status: data.status || "active",
+            status,
             subscription_plan: data.subscription_plan || "enterprise",
+            receipt_footer: data.receipt_footer || null,
+            approval_notes: data.approval_notes || null,
           })
           .returning();
 
-        // Also create a default main stock warehouse for the new shop
+        // Also create default main stock warehouse for the new shop
         await db.insert(stocks).values({
           shop_id: result.id,
           name: "Main Depot",
@@ -831,8 +871,10 @@ export const dataStore = {
       email: data.email || null,
       location: data.location || null,
       tin_number: data.tin_number || null,
-      status: data.status || "active",
+      status,
       subscription_plan: data.subscription_plan || "professional",
+      receipt_footer: data.receipt_footer || null,
+      approval_notes: data.approval_notes || null,
       created_at: new Date(),
     };
     memoryStore.shops.push(newShop);
@@ -851,6 +893,60 @@ export const dataStore = {
     });
 
     return newShop;
+  },
+
+  async approveShop(id: number, notes?: string): Promise<ShopRecord | null> {
+    if (isConnectedToNeon && db) {
+      try {
+        const [result] = await db
+          .update(shops)
+          .set({ status: "active", approval_notes: notes || "Approved by SuperAdmin" })
+          .where(eq(shops.id, id))
+          .returning();
+
+        // Activate users belonging to this shop
+        await db.update(users).set({ is_active: 1 }).where(eq(users.shop_id, id));
+
+        return (result as ShopRecord) || null;
+      } catch (e) {
+        console.error("Neon DB error in approveShop:", e);
+      }
+    }
+
+    const idx = memoryStore.shops.findIndex((s) => s.id === id);
+    if (idx === -1) return null;
+    memoryStore.shops[idx].status = "active";
+    memoryStore.shops[idx].approval_notes = notes || "Approved by SuperAdmin (Patrick Rwemera)";
+
+    // Activate staff
+    memoryStore.users.forEach((u) => {
+      if (u.shop_id === id) {
+        u.is_active = 1;
+      }
+    });
+
+    return memoryStore.shops[idx];
+  },
+
+  async rejectShop(id: number, reason: string): Promise<ShopRecord | null> {
+    if (isConnectedToNeon && db) {
+      try {
+        const [result] = await db
+          .update(shops)
+          .set({ status: "rejected", approval_notes: reason })
+          .where(eq(shops.id, id))
+          .returning();
+        return (result as ShopRecord) || null;
+      } catch (e) {
+        console.error("Neon DB error in rejectShop:", e);
+      }
+    }
+
+    const idx = memoryStore.shops.findIndex((s) => s.id === id);
+    if (idx === -1) return null;
+    memoryStore.shops[idx].status = "rejected";
+    memoryStore.shops[idx].approval_notes = reason;
+    return memoryStore.shops[idx];
   },
 
   async updateShop(id: number, data: Partial<ShopRecord>): Promise<ShopRecord | null> {
@@ -918,7 +1014,7 @@ export const dataStore = {
     return newStock;
   },
 
-  // USERS
+  // USERS & ALL 16 CORE CAPABILITIES
   async getUsers(shopId: number): Promise<UserRecord[]> {
     if (isConnectedToNeon && db) {
       try {
@@ -928,7 +1024,9 @@ export const dataStore = {
         console.error("Neon DB error in getUsers:", e);
       }
     }
-    return memoryStore.users.filter((u) => u.shop_id === shopId || u.role === "superadmin");
+    return memoryStore.users.filter(
+      (u) => u.shop_id === shopId || u.role === "superadmin" || u.role === "superadmin_support"
+    );
   },
 
   async getUserByEmail(email: string): Promise<UserRecord | null> {
@@ -960,6 +1058,27 @@ export const dataStore = {
     const hashedPassword = await bcrypt.hash(data.password || "Password123!", 10);
     const cleanEmail = data.email!.toLowerCase().trim();
 
+    const capabilities = {
+      can_create_orders: data.can_create_orders ?? 1,
+      can_process_payments: data.can_process_payments ?? 1,
+      can_release_stock: data.can_release_stock ?? 0,
+      can_manage_stock: data.can_manage_stock ?? 0,
+      can_import_export_stock: data.can_import_export_stock ?? 0,
+      can_partner_borrow: data.can_partner_borrow ?? 0,
+      can_view_reports: data.can_view_reports ?? 0,
+      can_view_buying_prices: data.can_view_buying_prices ?? 0,
+      can_give_discounts: data.can_give_discounts ?? 0,
+      can_manage_users: data.can_manage_users ?? 0,
+      can_print_full_receipt: data.can_print_full_receipt ?? 1,
+      can_print_delivery_note: data.can_print_delivery_note ?? 1,
+      can_manage_customers: data.can_manage_customers ?? 0,
+      can_manage_partners: data.can_manage_partners ?? 0,
+      can_void_orders: data.can_void_orders ?? 0,
+      can_edit_company_settings: data.can_edit_company_settings ?? 0,
+      can_view_audit_trail: data.can_view_audit_trail ?? 0,
+      can_reset_passwords: data.can_reset_passwords ?? 0,
+    };
+
     if (isConnectedToNeon && db) {
       try {
         const [result] = await db
@@ -974,14 +1093,7 @@ export const dataStore = {
             job_title: data.job_title || null,
             phone: data.phone || null,
             is_active: data.is_active ?? 1,
-            can_create_orders: data.can_create_orders ?? 1,
-            can_process_payments: data.can_process_payments ?? 1,
-            can_release_stock: data.can_release_stock ?? 0,
-            can_manage_stock: data.can_manage_stock ?? 0,
-            can_view_reports: data.can_view_reports ?? 1,
-            can_give_discounts: data.can_give_discounts ?? 0,
-            can_manage_users: data.can_manage_users ?? 0,
-            can_void_orders: data.can_void_orders ?? 0,
+            ...capabilities,
           })
           .returning();
         return result as UserRecord;
@@ -1002,14 +1114,7 @@ export const dataStore = {
       job_title: data.job_title || null,
       phone: data.phone || null,
       is_active: data.is_active ?? 1,
-      can_create_orders: data.can_create_orders ?? 1,
-      can_process_payments: data.can_process_payments ?? 1,
-      can_release_stock: data.can_release_stock ?? 0,
-      can_manage_stock: data.can_manage_stock ?? 0,
-      can_view_reports: data.can_view_reports ?? 1,
-      can_give_discounts: data.can_give_discounts ?? 0,
-      can_manage_users: data.can_manage_users ?? 0,
-      can_void_orders: data.can_void_orders ?? 0,
+      ...capabilities,
     };
     memoryStore.users.push(newUser);
     return newUser;
@@ -1037,6 +1142,24 @@ export const dataStore = {
     if (idx === -1) return null;
     memoryStore.users[idx] = { ...memoryStore.users[idx], ...updatePayload };
     return memoryStore.users[idx];
+  },
+
+  async resetPassword(userId: number, newPass: string = "Password123!"): Promise<boolean> {
+    const hashed = await bcrypt.hash(newPass, 10);
+    if (isConnectedToNeon && db) {
+      try {
+        await db.update(users).set({ password: hashed }).where(eq(users.id, userId));
+        return true;
+      } catch (e) {
+        console.error("Neon DB error in resetPassword:", e);
+      }
+    }
+    const idx = memoryStore.users.findIndex((u) => u.id === userId);
+    if (idx !== -1) {
+      memoryStore.users[idx].password = hashed;
+      return true;
+    }
+    return false;
   },
 
   // PRODUCTS
@@ -1593,7 +1716,6 @@ export const dataStore = {
     const currentBalance = Number(cust.credit_balance || 0);
     const newBalance = Math.max(0, currentBalance - data.amount);
 
-    // Update customer credit balance
     if (isConnectedToNeon && db) {
       try {
         await db
@@ -1609,7 +1731,6 @@ export const dataStore = {
       memoryStore.customers[custIdx].credit_balance = newBalance;
     }
 
-    // If specific orderId was given, adjust order debt
     if (data.order_id) {
       const ord = await this.getOrderById(data.order_id, shopId);
       if (ord) {
@@ -1641,7 +1762,6 @@ export const dataStore = {
       }
     }
 
-    // Insert payment record
     let newPayment: PaymentRecord;
     if (isConnectedToNeon && db) {
       try {
@@ -1805,19 +1925,18 @@ export const dataStore = {
       return {
         ...m,
         product_name: p?.name || `Product #${m.product_id}`,
-        performed_by_name: u?.name || "System",
+        performed_by_name: u?.name || "Authorized Staff",
       };
     });
   },
 
-  // REPORTS & AUDIT TRAIL
+  // REPORTS
   async getReports(shopId: number) {
     const shopOrders = await this.getOrders(shopId, { limit: 1000 });
     const shopPayments = await this.getPayments(shopId);
     const shopProducts = await this.getProducts(shopId);
     const shopCustomers = await this.getCustomers(shopId);
 
-    // Total metrics
     let totalRevenue = 0;
     let totalCollected = 0;
     let totalOutstandingDebt = 0;
@@ -1835,7 +1954,6 @@ export const dataStore = {
       }
     }
 
-    // Cash reconciliation breakdown
     const reconciliation = {
       cash: 0,
       momo: 0,
@@ -1850,7 +1968,6 @@ export const dataStore = {
       else if (p.payment_method === "bank_transfer") reconciliation.bank_transfer += amt;
     }
 
-    // Top products
     const productStats: Record<number, { name: string; quantity: number; revenue: number }> = {};
     for (const ord of shopOrders) {
       if (ord.items) {
@@ -1872,7 +1989,6 @@ export const dataStore = {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
-    // Low stock alerts
     const lowStockAlerts = shopProducts.filter(
       (p) => (p.quantity || 0) <= (p.low_stock_threshold || 10)
     );
@@ -1895,14 +2011,18 @@ export const dataStore = {
     };
   },
 
-  // SUPERADMIN CROSS-STORE AGGREGATES
+  // SUPERADMIN OVERVIEW WITH PENDING APPROVAL QUEUE
   async getSuperadminStats() {
     const allShops = await this.getShops();
     let totalNetworkRevenue = 0;
     let totalNetworkOrders = 0;
     const storeBreakdown = [];
+    const pendingShops: ShopRecord[] = [];
 
     for (const s of allShops) {
+      if (s.status === "pending_approval") {
+        pendingShops.push(s);
+      }
       const rep = await this.getReports(s.id);
       totalNetworkRevenue += rep.overview.totalRevenue;
       totalNetworkOrders += rep.overview.totalOrdersCount;
@@ -1921,6 +2041,8 @@ export const dataStore = {
 
     return {
       totalShops: allShops.length,
+      pendingApprovalsCount: pendingShops.length,
+      pendingShops,
       totalNetworkRevenue,
       totalNetworkOrders,
       storeBreakdown,

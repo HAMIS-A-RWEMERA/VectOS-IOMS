@@ -20,8 +20,10 @@ export const shops = pgTable("shops", {
   email: text("email").unique(),
   location: text("location"),
   tin_number: text("tin_number"),
-  status: text("status").default("active"), // 'active' | 'suspended' | 'trial'
+  status: text("status").default("pending_approval"), // 'active' | 'pending_approval' | 'rejected' | 'suspended'
   subscription_plan: text("subscription_plan").default("enterprise"), // 'starter' | 'professional' | 'enterprise'
+  receipt_footer: text("receipt_footer"),
+  approval_notes: text("approval_notes"),
   created_at: timestamp("created_at").defaultNow(),
 });
 
@@ -49,20 +51,32 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").unique().notNull(),
   password: text("password").notNull(),
-  role: text("role").notNull(), // 'superadmin' | 'manager' | 'cashier' | 'stock_keeper' | 'accountant'
+  role: text("role").notNull(), // 'superadmin' | 'superadmin_support' | 'manager' | 'accountant' | 'storekeeper' | 'salesperson' | 'cashier' | 'employee'
   job_title: text("job_title"),
   phone: text("phone"),
   is_active: integer("is_active").default(1),
 
-  // Granular permissions (1 = true, 0 = false)
+  // --- THE 16 CORE CAPABILITIES (The Checklist) ---
   can_create_orders: integer("can_create_orders").default(1),
   can_process_payments: integer("can_process_payments").default(1),
-  can_release_stock: integer("can_release_stock").default(1),
-  can_manage_stock: integer("can_manage_stock").default(1),
-  can_view_reports: integer("can_view_reports").default(1),
+  can_release_stock: integer("can_release_stock").default(0),
+  can_manage_stock: integer("can_manage_stock").default(0),
+  can_import_export_stock: integer("can_import_export_stock").default(0),
+  can_partner_borrow: integer("can_partner_borrow").default(0),
+  can_view_reports: integer("can_view_reports").default(0),
+  can_view_buying_prices: integer("can_view_buying_prices").default(0),
   can_give_discounts: integer("can_give_discounts").default(0),
   can_manage_users: integer("can_manage_users").default(0),
+  can_print_full_receipt: integer("can_print_full_receipt").default(1),
+  can_print_delivery_note: integer("can_print_delivery_note").default(1),
+  can_manage_customers: integer("can_manage_customers").default(0),
+  can_manage_partners: integer("can_manage_partners").default(0),
   can_void_orders: integer("can_void_orders").default(0),
+  can_edit_company_settings: integer("can_edit_company_settings").default(0),
+
+  // Supplementary administrative safeguards
+  can_view_audit_trail: integer("can_view_audit_trail").default(0),
+  can_reset_passwords: integer("can_reset_passwords").default(0),
 });
 
 // 4. products

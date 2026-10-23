@@ -41,7 +41,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+    const errorObj = new Error(data.error || `HTTP error! Status: ${response.status}`) as any;
+    errorObj.status = data.status;
+    errorObj.shopName = data.shopName;
+    throw errorObj;
   }
 
   return data as T;
@@ -60,16 +63,34 @@ export const api = {
     return request("/auth/me");
   },
 
-  async registerTenant(payload: any): Promise<{ token: string; user: User; shop: Shop }> {
+  async registerTenant(payload: any): Promise<{ message: string; status: string; shop: Shop }> {
     return request("/auth/register-tenant", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
 
-  // Shops & Superadmin
+  // Shops & Superadmin Approval Workflow
   async getShops(): Promise<Shop[]> {
     return request("/shops");
+  },
+
+  async getPendingShops(): Promise<Shop[]> {
+    return request("/shops/pending");
+  },
+
+  async approveShop(id: number, notes?: string): Promise<{ message: string; shop: Shop }> {
+    return request(`/shops/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    });
+  },
+
+  async rejectShop(id: number, reason: string): Promise<{ message: string; shop: Shop }> {
+    return request(`/shops/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
   },
 
   async getSuperadminOverview(): Promise<SuperadminStats> {
@@ -78,6 +99,19 @@ export const api = {
 
   async getCurrentShop(): Promise<Shop> {
     return request("/shops/current");
+  },
+
+  async updateCompanySettings(payload: {
+    name?: string;
+    tin_number?: string;
+    location?: string;
+    phone?: string;
+    receipt_footer?: string;
+  }): Promise<{ message: string; shop: Shop }> {
+    return request("/shops/settings", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   },
 
   async createShop(payload: Partial<Shop>): Promise<Shop> {
@@ -247,7 +281,7 @@ export const api = {
     return request("/reports/dashboard");
   },
 
-  // Users
+  // Users & Staff
   async getUsers(): Promise<User[]> {
     return request("/users");
   },
@@ -263,6 +297,13 @@ export const api = {
     return request(`/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
+    });
+  },
+
+  async resetUserPassword(id: number, newPassword?: string): Promise<{ message: string }> {
+    return request(`/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword }),
     });
   },
 };

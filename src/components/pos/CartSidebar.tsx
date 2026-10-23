@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 import { Customer } from "../../types";
 import {
   Trash2,
@@ -39,6 +40,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
     updatePrice,
   } = useCart();
 
+  const { hasPermission } = useAuth();
+  const canGiveDiscounts = hasPermission("can_give_discounts");
   const [isEditingDiscount, setIsEditingDiscount] = useState<boolean>(false);
   const [discountInput, setDiscountInput] = useState<number>(discount);
   const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
@@ -159,7 +162,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                 <div className="flex items-center justify-between pt-1">
                   {/* Price and Price Edit */}
                   <div className="flex items-center space-x-1.5">
-                    {isEditing ? (
+                    {isEditing && canGiveDiscounts ? (
                       <div className="flex items-center space-x-1">
                         <input
                           type="number"
@@ -177,14 +180,14 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                       </div>
                     ) : (
                       <div
-                        onClick={() => handleStartPriceEdit(item.product.id, currentPrice)}
-                        className="cursor-pointer group flex items-center space-x-1 text-slate-400 hover:text-brand-300"
-                        title="Click to override line price"
+                        onClick={() => canGiveDiscounts && handleStartPriceEdit(item.product.id, currentPrice)}
+                        className={`flex items-center space-x-1 ${canGiveDiscounts ? "cursor-pointer group text-slate-400 hover:text-brand-300" : "text-slate-300"}`}
+                        title={canGiveDiscounts ? "Click to override line price" : "Price locked"}
                       >
                         <span className="font-mono text-slate-300 font-medium">
                           {currentPrice.toLocaleString()} RWF
                         </span>
-                        <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {canGiveDiscounts && <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />}
                       </div>
                     )}
                   </div>
@@ -230,7 +233,9 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
             <span>Discount:</span>
           </div>
 
-          {isEditingDiscount ? (
+          {!canGiveDiscounts ? (
+            <span className="text-[11px] text-slate-400 italic">Discounts Locked</span>
+          ) : isEditingDiscount ? (
             <div className="flex items-center space-x-1">
               <input
                 type="number"

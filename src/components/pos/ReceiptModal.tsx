@@ -1,6 +1,7 @@
 import React from "react";
 import { Order, Shop } from "../../types";
-import { Printer, X, CheckCircle, FileText } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { Printer, X, CheckCircle, FileText, Lock } from "lucide-react";
 
 interface ReceiptModalProps {
   order: Order | null;
@@ -15,6 +16,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onClose,
   onOpenDeliveryNote,
 }) => {
+  const { hasPermission } = useAuth();
+  const canPrintFull = hasPermission("can_print_full_receipt");
+  const canPrintDelivery = hasPermission("can_print_delivery_note");
+
   if (!order) return null;
 
   const handlePrint = () => {
@@ -141,24 +146,31 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         {/* Modal Actions */}
         <div className="p-4 border-t border-slate-800 bg-slate-850 flex items-center justify-between">
-          {onOpenDeliveryNote && (
+          {onOpenDeliveryNote && canPrintDelivery && (
             <button
               onClick={onOpenDeliveryNote}
               className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
             >
               <FileText className="w-4 h-4" />
-              <span>Delivery Note</span>
+              <span>80mm Delivery Note</span>
             </button>
           )}
 
           <div className="flex items-center space-x-2 ml-auto">
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center space-x-2 shadow-lg shadow-brand-500/25 transition-all"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Print 80mm Receipt</span>
-            </button>
+            {canPrintFull ? (
+              <button
+                onClick={handlePrint}
+                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center space-x-2 shadow-lg shadow-brand-500/25 transition-all"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print 80mm Receipt</span>
+              </button>
+            ) : (
+              <div className="text-[11px] text-slate-400 flex items-center space-x-1">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Financial Receipt Locked</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

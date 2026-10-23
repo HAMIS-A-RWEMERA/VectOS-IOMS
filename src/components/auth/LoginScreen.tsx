@@ -12,6 +12,9 @@ import {
   AlertCircle,
   KeyRound,
   Store,
+  Clock,
+  CheckCircle2,
+  UserCheck,
 } from "lucide-react";
 
 export const LoginScreen: React.FC = () => {
@@ -21,6 +24,8 @@ export const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState("Password123!");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingNotice, setPendingNotice] = useState<{ shopName?: string; message: string } | null>(null);
+  const [registeredSuccess, setRegisteredSuccess] = useState<string | null>(null);
 
   // Register form state
   const [regShopName, setRegShopName] = useState("");
@@ -35,11 +40,19 @@ export const LoginScreen: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setPendingNotice(null);
 
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.message || "Failed to sign in. Please verify your credentials.");
+      if (err.status === "pending_approval") {
+        setPendingNotice({
+          shopName: err.shopName,
+          message: err.message || "Your store is pending verification by SuperAdmin Patrick Rwemera.",
+        });
+      } else {
+        setError(err.message || "Failed to sign in. Please check your email or password.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -49,9 +62,10 @@ export const LoginScreen: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setRegisteredSuccess(null);
 
     try {
-      await api.registerTenant({
+      const res = await api.registerTenant({
         shopName: regShopName,
         ownerName: regOwnerName,
         email: regEmail,
@@ -61,8 +75,10 @@ export const LoginScreen: React.FC = () => {
         password: regPassword,
       });
 
-      // Automatically sign in
-      await login(regEmail, regPassword);
+      setRegisteredSuccess(res.message);
+      setMode("login");
+      setEmail(regEmail);
+      setPassword(regPassword);
     } catch (err: any) {
       setError(err.message || "Failed to register tenant.");
     } finally {
@@ -73,27 +89,29 @@ export const LoginScreen: React.FC = () => {
   const quickFill = (userEmail: string) => {
     setEmail(userEmail);
     setPassword("Password123!");
+    setPendingNotice(null);
+    setError(null);
   };
 
   return (
     <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background ambient lighting */}
+      {/* Ambient background lighting */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden z-10">
+      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden z-10">
         {/* Brand Banner */}
-        <div className="p-8 text-center bg-gradient-to-b from-slate-850 to-slate-900 border-b border-slate-800">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-xl shadow-brand-500/20 font-black text-white text-2xl mb-3">
+        <div className="p-7 text-center bg-gradient-to-b from-slate-850 to-slate-900 border-b border-slate-800">
+          <div className="w-13 h-13 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-xl shadow-brand-500/20 font-black text-white text-2xl mb-2.5">
             V
           </div>
           <h1 className="text-xl font-extrabold text-white tracking-tight">VECTOS ERP</h1>
           <p className="text-xs text-slate-400 mt-1">
-            B2B Multi-Tenant Hardware, Materials & Retail Depot Cloud
+            B2B Multi-Tenant Hardware & Construction Materials Depot Cloud
           </p>
 
           {/* Mode Switcher */}
-          <div className="mt-5 grid grid-cols-2 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold">
+          <div className="mt-4 grid grid-cols-2 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold">
             <button
               type="button"
               onClick={() => {
@@ -120,10 +138,37 @@ export const LoginScreen: React.FC = () => {
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Register Tenant
+              Register New Store
             </button>
           </div>
         </div>
+
+        {/* Pending Approval Alert Banner */}
+        {pendingNotice && (
+          <div className="mx-6 mt-4 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs space-y-1.5 animate-in fade-in">
+            <div className="flex items-center space-x-2 font-bold text-amber-300">
+              <Clock className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
+              <span>STORE REGISTRATION PENDING APPROVAL</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed text-[11px]">
+              {pendingNotice.message}
+            </p>
+            <p className="text-[10px] text-amber-400/80 font-mono">
+              Status: <span className="font-bold underline">Awaiting SuperAdmin Activation</span>
+            </p>
+          </div>
+        )}
+
+        {/* Registered Success Banner */}
+        {registeredSuccess && (
+          <div className="mx-6 mt-4 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs space-y-1 animate-in fade-in">
+            <div className="flex items-center space-x-2 font-bold text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>Registration Submitted Successfully</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed text-[11px]">{registeredSuccess}</p>
+          </div>
+        )}
 
         {error && (
           <div className="mx-6 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center space-x-2">
@@ -133,8 +178,8 @@ export const LoginScreen: React.FC = () => {
         )}
 
         {mode === "login" ? (
-          <div className="p-6 space-y-5">
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
+          <div className="p-6 space-y-4">
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-300">Email Address</label>
                 <div className="relative">
@@ -184,19 +229,19 @@ export const LoginScreen: React.FC = () => {
               </button>
             </form>
 
-            {/* Quick Demo Credentials */}
+            {/* Quick Demo Switcher with 7 Core Roles */}
             <div className="pt-3 border-t border-slate-800/80 space-y-2">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                Quick Demo Switcher (Preloaded RBAC Roles):
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Quick Demo Switcher (7 Core Roles + Superadmin Support):
               </span>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                 <button
                   type="button"
                   onClick={() => quickFill("rwemera30@gmail.com")}
-                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-purple-500/30 text-left transition-colors"
+                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-purple-500/40 text-left transition-colors"
                 >
                   <div className="font-bold text-purple-300 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-purple-400" /> Superadmin
+                    <Sparkles className="w-3 h-3 text-purple-400" /> SuperAdmin
                   </div>
                   <div className="text-[10px] text-slate-400 truncate">rwemera30@gmail.com</div>
                 </button>
@@ -206,17 +251,17 @@ export const LoginScreen: React.FC = () => {
                   onClick={() => quickFill("manager@vectos.rw")}
                   className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-left transition-colors"
                 >
-                  <div className="font-bold text-slate-200">Depot Manager</div>
+                  <div className="font-bold text-slate-200">1. Manager</div>
                   <div className="text-[10px] text-slate-400 truncate">manager@vectos.rw</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => quickFill("cashier@vectos.rw")}
+                  onClick={() => quickFill("accountant@vectos.rw")}
                   className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-left transition-colors"
                 >
-                  <div className="font-bold text-slate-200">Head Cashier</div>
-                  <div className="text-[10px] text-slate-400 truncate">cashier@vectos.rw</div>
+                  <div className="font-bold text-slate-200">2. Accountant</div>
+                  <div className="text-[10px] text-slate-400 truncate">accountant@vectos.rw</div>
                 </button>
 
                 <button
@@ -224,19 +269,74 @@ export const LoginScreen: React.FC = () => {
                   onClick={() => quickFill("stock@vectos.rw")}
                   className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-left transition-colors"
                 >
-                  <div className="font-bold text-slate-200">Stock Keeper</div>
+                  <div className="font-bold text-slate-200">3. Storekeeper</div>
                   <div className="text-[10px] text-slate-400 truncate">stock@vectos.rw</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => quickFill("sales@vectos.rw")}
+                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-left transition-colors"
+                >
+                  <div className="font-bold text-slate-200">4. Salesperson</div>
+                  <div className="text-[10px] text-slate-400 truncate">sales@vectos.rw</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => quickFill("cashier@vectos.rw")}
+                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-left transition-colors"
+                >
+                  <div className="font-bold text-slate-200">5. Cashier</div>
+                  <div className="text-[10px] text-slate-400 truncate">cashier@vectos.rw</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => quickFill("employee@vectos.rw")}
+                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-left transition-colors"
+                >
+                  <div className="font-bold text-slate-200">6. Employee</div>
+                  <div className="text-[10px] text-cyan-300 truncate">PR & Relations Officer</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => quickFill("support@vectos.rw")}
+                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-cyan-500/30 text-left transition-colors"
+                >
+                  <div className="font-bold text-cyan-300">7. Support Staff</div>
+                  <div className="text-[10px] text-slate-400 truncate">support@vectos.rw</div>
+                </button>
+
+                {/* Test Pending Store Approval */}
+                <button
+                  type="button"
+                  onClick={() => quickFill("thierry@kigalinorthdepot.rw")}
+                  className="col-span-2 p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-left transition-colors"
+                >
+                  <div className="font-bold text-amber-300 flex items-center justify-between">
+                    <span>Test Unapproved Store Applicant</span>
+                    <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 bg-amber-500/20 rounded">
+                      Pending Approval
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">thierry@kigalinorthdepot.rw (blocked until approved)</div>
                 </button>
               </div>
             </div>
           </div>
         ) : (
           <form onSubmit={handleRegisterSubmit} className="p-6 space-y-3.5 text-xs">
+            <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-300 text-[11px] leading-relaxed">
+              <strong>SuperAdmin Approval Policy:</strong> Once registered, your application will be routed to the Platform SuperAdmin for TIN verification and activation before you start operating.
+            </div>
+
             <div className="space-y-1">
               <label className="font-semibold text-slate-300">Depot / Store Name</label>
               <input
                 type="text"
-                placeholder="e.g. Kigali Heavy Materials Depot"
+                placeholder="e.g. Kigali Heavy Materials Depot Ltd"
                 value={regShopName}
                 onChange={(e) => setRegShopName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:border-brand-500"
@@ -282,7 +382,7 @@ export const LoginScreen: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Location</label>
+                <label className="font-semibold text-slate-300">Location Address</label>
                 <input
                   type="text"
                   placeholder="Gikondo Industrial Zone"
@@ -292,7 +392,7 @@ export const LoginScreen: React.FC = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">RRA TIN</label>
+                <label className="font-semibold text-slate-300">RRA TIN Number</label>
                 <input
                   type="text"
                   placeholder="100234567"
@@ -304,7 +404,7 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="font-semibold text-slate-300">Admin Password</label>
+              <label className="font-semibold text-slate-300">Manager Password</label>
               <input
                 type="password"
                 value={regPassword}
@@ -322,11 +422,11 @@ export const LoginScreen: React.FC = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Provisioning Tenant...</span>
+                  <span>Submitting Application...</span>
                 </>
               ) : (
                 <>
-                  <span>Create Store Account</span>
+                  <span>Submit Store for Approval</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

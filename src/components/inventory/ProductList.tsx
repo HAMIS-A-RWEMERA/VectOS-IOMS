@@ -41,6 +41,7 @@ export const ProductList: React.FC = () => {
   const [selectedProductForAction, setSelectedProductForAction] = useState<Product | null>(null);
 
   const canManageStock = hasPermission("can_manage_stock");
+  const canViewBuyingPrices = hasPermission("can_view_buying_prices");
 
   const loadProducts = async () => {
     setIsLoading(true);
@@ -219,9 +220,9 @@ export const ProductList: React.FC = () => {
                   <th className="py-3 px-4">Product Details</th>
                   <th className="py-3 px-4">Category</th>
                   <th className="py-3 px-4 text-right">In Stock</th>
-                  <th className="py-3 px-4 text-right">Buying Price</th>
+                  {canViewBuyingPrices && <th className="py-3 px-4 text-right">Buying Price</th>}
                   <th className="py-3 px-4 text-right">Selling Price</th>
-                  <th className="py-3 px-4 text-right">Gross Margin</th>
+                  {canViewBuyingPrices && <th className="py-3 px-4 text-right">Gross Margin</th>}
                   <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
@@ -275,17 +276,21 @@ export const ProductList: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-slate-300">
-                          {buying.toLocaleString()} RWF
-                        </td>
+                        {canViewBuyingPrices && (
+                          <td className="py-3.5 px-4 text-right font-mono text-slate-300">
+                            {buying.toLocaleString()} RWF
+                          </td>
+                        )}
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-white">
                           {selling.toLocaleString()} RWF
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold">
-                            +{margin}%
-                          </span>
-                        </td>
+                        {canViewBuyingPrices && (
+                          <td className="py-3.5 px-4 text-right font-mono">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold">
+                              +{margin}%
+                            </span>
+                          </td>
+                        )}
                         <td className="py-3.5 px-4 text-center">
                           <div className="flex items-center justify-center space-x-1">
                             {canManageStock && (
